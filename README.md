@@ -1,8 +1,8 @@
 Included in this Respository are the following
-*-PA1_template.Rmd
-*-PA1_template.md
-*-PA1_template.html
-*-figures
+**PA1_template.Rmd
+**PA1_template.md
+**PA1_template.html
+**figures
 
 
 ## Introduction
