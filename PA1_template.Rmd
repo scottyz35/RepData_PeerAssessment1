@@ -1,25 +1,168 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
----
+#title: "PA1_template"
+#author: "Scott Ziemke"
+#date: "February 9, 2016"
+#output: html_document
+
+***
+
+##Introduction
+
+It is now possible to collect a large amount of data about personal movement using activity monitoring devices such as a Fitbit, Nike Fuelband, or Jawbone Up. These type of devices are part of the "quantified self" movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. But these data remain under-utilized both because the raw data are hard to obtain and there is a lack of statistical methods and software for processing and interpreting the data.
+
+This assignment makes use of data (found here:  <https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip>) from a personal activity monitoring device. This device collects data at 5 minute intervals through out the day. The data consists of two months of data from an anonymous individual collected during the months of October and November, 2012 and include the number of steps taken in 5 minute intervals each day (NAs included). 
+
+***
+##Assignment Structure
+
+This assignment is broken down and answered by 5 Major components:
+1. Loading and preprocessing the data
+2. What is mean total number of steps taken per day?
+3. What is the average daily activity pattern?
+4. Imputing missing values
+5. Are there differences in activity patterns between weekdays and weekends?
+
+***
+
+##Assignment Content
+
+##1. Loading and preprocessing the data
+
+The data consists of only 1 file titled "activity.csv. Load the data using the following r script:
+
+```{r, echo = FALSE}
+setwd("C:/Users/scott.ziemke/Documents/Coursera/Reproducable Research/")
+```
+
+```{r, echo = TRUE} 
+data_raw <- as.data.frame(read.csv("activity.csv", sep = ","))
+```
+
+Load required librarys:
+
+```{r, echo = TRUE}
+library(ggplot2)
+library(scales)
+library(plyr)
+```
 
 
-## Loading and preprocessing the data
+Lets first take a look at the contents of the data before we perform any manipulations.  This can be done by
+
+```{r, echo = TRUE} 
+summary(data_raw)
+```
+
+The variables included in this dataset are:
+
+steps: Number of steps taking in a 5-minute interval (missing values are coded as NA)
+date: The date on which the measurement was taken in YYYY-MM-DD format
+interval: Identifier for the 5-minute interval in which measurement was taken
+
+There are a total of 17,568 observations in this dataset. 
+```{r, echo = TRUE} 
+nrow(data)
+```
+
+In order to format the variable "date" as time series element, some manipulation must be done:
+```{r, echo = TRUE}
+data_raw$date <- as.Date(data_raw$date, format = "%Y-%m-%d")
+```
+
+A new data set will be created with NAs omitted
+```{r, echo = TRUE}
+data_filtered <- na.omit(data_raw)
+```
 
 
+##2. What is mean total number of steps taken per day?
 
-## What is mean total number of steps taken per day?
+The total, mean, and median number of steps per day is calculated:
+```{r, echo = TRUE}
+Totals <- cbind(with(data_raw, tapply(steps, date, sum)), 
+      with(data_raw, tapply(steps, date, mean)), 
+      with(data_raw, tapply(steps, date, median)))
+colnames(Totals) <- c("sum", "mean", "median")
+Totals
+```
 
+Visually, we can see the total number of steps per day in a histogram:
+```{r, echo = TRUE}
+ggplot(data_filtered, aes(date, steps)) +
+  stat_summary(fun.y = sum, geom = "bar")+ 
+  scale_x_date(breaks=date_breaks(width="1 day"), labels = date_format("%m-%d"))+ 
+  theme(axis.text.x=element_text(angle=90))
+```
 
+##3. What is the average daily activity pattern?
 
-## What is the average daily activity pattern?
+Visually, we can inspect the average number of steps per time interval, accross all days: 
 
+```{r, echo= TRUE}
+ggplot(data_filtered, aes(interval, steps)) +
+  stat_summary(fun.y = mean, geom = "line")+ 
+  xlab("Time Interval ") +          
+  ylab("Average Steps")
+```
 
+To determine the interval with the maximum number of steps on average accross all days:
 
-## Imputing missing values
+```{r, echo = TRUE}
+Int_Table <- ddply(data_raw, .(interval), summarize, total_steps = sum(steps, na.rm = TRUE))
+subset(Int_Table, Int_Table[,2]== max(Int_Table[,2]))
+```
 
+##4. Imputing missing values
 
+As noted in the introduction, NAs are included in the "steps" variable.  The total number of entries with NA are:
 
-## Are there differences in activity patterns between weekdays and weekends?
+```{r, echo = TRUE}
+nrow(data_raw)-nrow(na.omit(data_raw))
+```
+
+In order to include the data set in the study, the entries with NAs were replaced with mean number of steps for their respective time interval, across all days. A new data set "data_replaced" is created:
+```{r, echo = TRUE}
+myFN <- function(x){mean(x, na.rm = TRUE)}
+data_replaced <- data_raw
+data_replaced$steps <- with(data_replaced, ifelse(is.na(steps)==TRUE, tapply(steps, interval, myFN),steps))
+```
+
+The mean and Median Steps are then plotted by time interval across all days:
+```{r, echo = TRUE}
+ggplot(data_replaced, aes(interval, steps)) +
+  stat_summary(fun.y = mean, geom = "line", color = "red", aes(interval, steps, color = "mean"))+ 
+  stat_summary(fun.y = median, geom = "line", color = "blue", aes(interval, steps, color = "median"))+
+  xlab("Time Interval ") +          
+  ylab("Average Steps") +
+  scale_shape_manual("", values=c("mean"="x"))
+```
+
+Comparing the mean and median from the original data set "data_raw" to the new data set with NAs replaced "data_filtered", is is aparent that the mean and median are equal. 
+
+```{r, echo = TRUE}
+ifelse(with(data_replaced, tapply(steps, date, mean))-with(data_raw, tapply(steps, date, mean, na.rm = TRUE)) == 0  |
+         is.na(with(data_replaced, tapply(steps, date, mean))-with(data_raw, tapply(steps, date, mean))) == TRUE,
+       "Equal",
+       "Not Equal")
+ifelse(with(data_replaced, tapply(steps, date, median))-with(data_raw, tapply(steps, date, median, na.rm = TRUE)) == 0  |
+         is.na(with(data_replaced, tapply(steps, date, median))-with(data_raw, tapply(steps, date, median))) == TRUE,
+       "Equal",
+       "Not Equal")
+```
+
+##Are there differences in activity patterns between weekdays and weekends?
+
+To evaluate wether or not weekdays vary from weekends, a new catagorical variable is created called "weekday"
+
+```{r, echo = TRUE}
+data_filtered$weekday <- ifelse(weekdays(data_filtered$date) == "Saturday" | weekdays(data_filtered$date) == "Sunday", "Weekend", "Weekday")
+```
+
+Next, it would be useful to visualize the average steps per interval, by weekend and weekday. 
+
+```{r, echo = TRUE}
+ggplot(data_filtered, aes(interval, steps))+
+  stat_summary(fun.y = mean, geom = "line")+ 
+  facet_wrap(~weekday, nrow=2)
+```
+
