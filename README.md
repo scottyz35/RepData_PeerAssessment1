@@ -1,3 +1,10 @@
+Included in this Respository are the following
+-PA1_template.Rmd
+-PA1_template.md
+-PA1_template.html
+-figures
+
+
 ## Introduction
 
 It is now possible to collect a large amount of data about personal
